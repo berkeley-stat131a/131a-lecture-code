@@ -1,0 +1,611 @@
+---
+title: "Boxplot and Histogram Lecture Code"
+---
+
+```{r}
+source('../josh-helpers.R')
+
+theme_update(
+  axis.text=element_text(size=14),
+  axis.title=element_text(size=14)
+)
+
+library(patchwork)
+```
+
+```{r}
+# `scan` reads in a one-column CSV file as a vector.
+scores = scan('anon-quiz-grades.csv')
+```
+
+```{r}
+print(scores)
+```
+```{r}
+print(sort(scores))
+```
+
+```{r}
+avg_score = mean(scores)
+glue('The average score is {avg_score}.')
+
+median_score = median(scores)
+glue('The median score is {median_score}.')
+
+min_score = min(scores)
+glue('The minimum score is {min_score}.')
+
+max_score = max(scores)
+glue('The maximum score is {max_score}.')
+```
+```{r}
+table(scores)
+```
+```{r}
+sum(scores)
+```
+
+```{r}
+p50_score = quantile(scores, 0.5)
+glue('The 50th percentile score (i.e., the median) is {p50_score}.')
+```
+
+```{r}
+q1 = quantile(scores, 0.25)
+q3 = quantile(scores, 0.75)
+glue('The first quantile of scores is {q1}, and the third quantile is {q3}.')
+```
+
+```{r}
+iqr = q3 - q1
+outlier_upper = q3 + 1.5 * iqr
+outlier_lower = q1 - 1.5 * iqr
+glue('The lower outlier boundary is {outlier_lower}, and the upper outlier boundary is {outlier_upper}.')
+```
+
+```{r}
+# More on how `ggplot()` works in a later lab! 
+# For now, just focus on understanding the plot. 
+quiz_boxplot = ggplot() +
+  geom_boxplot(aes(x = scores)) +
+  scale_x_continuous(
+    name = 'Score',
+    limits = c(0, 12),
+    breaks = seq(0, 12, by=2)
+  ) +
+  theme(
+    axis.title.y=element_blank(),
+    axis.text.y=element_blank(),
+    axis.ticks.y=element_blank()
+  )
+quiz_boxplot
+```
+```{r}
+# Outliers hidden.
+quiz_boxplot = ggplot() +
+  geom_boxplot(aes(x = scores), coef = Inf, staplewidth=0.2) +
+  scale_x_continuous(
+    name = 'Score',
+    limits = c(0, 12),
+    breaks = seq(0, 12, by=2)
+  ) +
+  theme(
+    axis.title.y=element_blank(),
+    axis.text.y=element_blank(),
+    axis.ticks.y=element_blank()
+  )
+quiz_boxplot
+```
+
+```{r}
+# `set.seed` initiates R's internal random number generator.
+# By setting a seed, this code chunk will always return the same values, even
+# if there is random number generation happening. This is useful for tutorials. 
+# In industry applications, you probably would not use `set.seed`.
+set.seed(8)
+
+# `rchisq` is a function to generate random values from a chi-square distribution.
+# More on the chi-square distribution later in the course.
+# For now, do not worry about how these fake scores are generated.
+fake_scores = rchisq(n = 1000, df = 0.5)
+
+# Polling question: Why is there no left whisker?
+# Polling question: Which of these score ranges contains the most students?
+# [0, 0.5)
+# [0.5, 2)
+# [2, 7]
+fake_quiz_boxplot = ggplot() +
+  geom_boxplot(aes(x = fake_scores)) +
+  scale_x_continuous(
+    name = 'Fake score',
+    limits = c(0, NA),
+  ) +
+  theme(
+    axis.title.y=element_blank(),
+    axis.text.y=element_blank(),
+    axis.ticks.y=element_blank(),
+  )
+
+fake_quiz_boxplot
+```
+```{r}
+# Sometimes the whisker ends will demarcate the minimum and maximum values,
+# and outliers will be hidden.
+fake_quiz_boxplot_2 = ggplot() +
+  geom_boxplot(aes(x = fake_scores), coef = Inf, staplewidth=0.2) +
+  scale_x_continuous(
+    name = 'Fake score',
+    limits = c(0, NA),
+  ) +
+  theme(
+    axis.title.y=element_blank(),
+    axis.text.y=element_blank(),
+    axis.ticks.y=element_blank(),
+  )
+
+fake_quiz_boxplot_2
+```
+```{r}
+# Sometimes boxplots are vertical.
+fake_quiz_boxplot_3 = ggplot() +
+  geom_boxplot(aes(y = fake_scores), coef = Inf, staplewidth=0.2) +
+  scale_y_continuous(
+    name = 'Fake score',
+    limits = c(0, NA),
+  ) +
+  theme(
+    axis.title.x=element_blank(),
+    axis.text.x=element_blank(),
+    axis.ticks.x=element_blank(),
+  )
+
+fake_quiz_boxplot_3
+```
+
+```{r}
+# Note: This is a bad way to make a histogram! This code is just for exposition.
+sample_bar_chart_data = sample(c('A', 'B', 'C', 'D', 'E'), size = 100, prob=1:5, replace = TRUE)
+
+sample_bar_chart = ggplot() +
+  geom_bar(
+    aes(x = sample_bar_chart_data),
+    color='black',
+    fill='gray'
+  ) +
+  scale_x_discrete(
+    name = 'Category'
+  ) +
+  scale_y_continuous(
+    name = 'Number in category'
+  )
+
+sample_bar_chart
+```
+
+```{r}
+# Note: This is a bad way to make a histogram! This code is just for exposition.
+bar_chart_data = tibble(
+    score = scores
+  ) %>% 
+  mutate(
+    score_bucket = case_when(
+      between(score, 2, 4) ~ '[2-4)',
+      between(score, 4, 6) ~ '[4-6)',
+      between(score, 6, 8) ~ '[6-8)',
+      between(score, 8, 10) ~ '[8-10)',
+      between(score, 10, 12) ~ '[10-12]'
+    )
+  ) %>% 
+  group_by(score_bucket) %>% 
+  summarize(
+    n_students = n()
+  ) %>% 
+  bind_rows(
+    tibble(score_bucket = '[0-2)', n_students = 0)
+  )
+
+bar_chart = ggplot(bar_chart_data) +
+  geom_col(
+    aes(x = score_bucket, y = n_students),
+    color='black',
+    fill='gray'
+  ) +
+  scale_x_discrete(
+    name = 'Score range',
+    drop=FALSE,
+    limits = c('[0-2)', '[2-4)', '[4-6)', '[6-8)', '[8-10)', '[10-12]')
+  ) +
+  scale_y_continuous(
+    name = 'Number of students'
+  )
+
+bar_chart
+```
+```{r}
+quiz_histogram = ggplot() +
+  geom_histogram(
+    aes(x = scores),
+    color='black',
+    fill='gray',
+    breaks=seq(0,12,by=2)
+  ) +
+  scale_x_continuous(
+    name = 'Score',
+    limits = c(0, 12),
+    breaks = seq(0, 12, by=2)
+  ) +
+  scale_y_continuous(
+    name = 'Number of students'
+  )
+
+quiz_histogram
+```
+
+```{r}
+bar_chart / quiz_histogram
+bar_chart / quiz_histogram + plot_layout(axis_titles = "collect")
+```
+
+```{r}
+quiz_boxplot / quiz_histogram + plot_layout(axis_titles = "collect")
+```
+```{r}
+quiz_violin_plot = ggplot() +
+  geom_violin(aes(x = scores, y=1)) +
+  geom_boxplot(aes(x = scores, y=1), width=0.05) +
+  scale_x_continuous(
+    name = 'Score',
+    limits = c(0, 12),
+    breaks = seq(0, 12, by=2)
+  ) +
+  theme(
+    axis.title.y=element_blank(),
+    axis.text.y=element_blank(),
+    axis.ticks.y=element_blank()
+  )
+quiz_violin_plot
+```
+
+```{r}
+quiz_boxplot / quiz_histogram / quiz_violin_plot
+```
+
+```{r}
+quiz_rel_freq_histogram = ggplot() +
+  geom_histogram(
+    aes(x = scores, y=..count../sum(..count..)),
+    color='black',
+    fill='gray',
+    breaks=seq(0,12,by=2)
+  ) +
+  scale_x_continuous(
+    name = 'Score',
+    limits = c(0, 12),
+    breaks = seq(0, 12, by=2)
+  ) +
+  scale_y_continuous(
+    name = 'Proportion of students',
+    labels = scales::percent_format(accuracy=1)
+  )
+
+quiz_rel_freq_histogram
+```
+
+```{r}
+quiz_rel_freq_histogram / quiz_histogram + plot_layout(axis_titles = "collect")
+```
+```{r}
+quiz_rel_freq_histogram_2 = ggplot() +
+  geom_histogram(
+    aes(x = scores, y=..count../sum(..count..)),
+    color='black',
+    fill='gray',
+    breaks=seq(0,12,by=1)
+  ) +
+  scale_x_continuous(
+    name = 'Score',
+    limits = c(0, 12),
+    breaks = seq(0, 12, by=2)
+  ) +
+  scale_y_continuous(
+    name = 'Proportion of students',
+    labels = scales::percent_format(accuracy=1)
+  )
+
+quiz_rel_freq_histogram_2
+```
+
+```{r}
+quiz_rel_freq_histogram / quiz_rel_freq_histogram_2
+# quiz_rel_freq_histogram / quiz_rel_freq_histogram_2 + plot_layout(axis_titles = "collect")
+```
+```{r}
+quiz_rel_freq_histogram_3 = ggplot() +
+  geom_histogram(
+    aes(x = scores, y=..count../sum(..count..)),
+    color='black',
+    fill='gray',
+    breaks=seq(0,12,by=0.5)
+  ) +
+  scale_x_continuous(
+    name = 'Score',
+    limits = c(0, 12),
+    breaks = seq(0, 12, by=2)
+  ) +
+  scale_y_continuous(
+    name = 'Proportion of students',
+    labels = scales::percent_format(accuracy=1)
+  )
+
+quiz_rel_freq_histogram_3
+```
+```{r}
+quiz_rel_freq_histogram / quiz_rel_freq_histogram_2 / quiz_rel_freq_histogram_3 + plot_layout(axis_titles = "collect")
+```
+```{r}
+# Why are the bars no longer touching?
+# They technically still are. Some buckets just have no values. 
+quiz_rel_freq_histogram_4 = ggplot() +
+  geom_histogram(
+    aes(x = scores, y=..count../sum(..count..)),
+    color='black',
+    fill='gray',
+    breaks=seq(0,12,by=0.1)
+  ) +
+  scale_x_continuous(
+    name = 'Score',
+    limits = c(0, 12),
+    breaks = seq(0, 12, by=2)
+  ) +
+  scale_y_continuous(
+    name = 'Proportion of students',
+    labels = scales::percent_format(accuracy=1)
+  )
+
+quiz_rel_freq_histogram_4
+```
+```{r}
+# Which plot do you prefer?
+# When do the y-axis values stop being useful?
+quiz_rel_freq_histogram / quiz_rel_freq_histogram_2 / quiz_rel_freq_histogram_3 / quiz_rel_freq_histogram_4 + plot_layout(axis_titles = "collect")
+```
+
+```{r}
+quiz_rel_freq_polygon = ggplot() +
+  geom_histogram(
+    aes(x = scores, y=..count../sum(..count..)),
+    color='black',
+    fill='gray',
+    breaks=seq(0,12,by=0.5)
+  ) +
+  geom_freqpoly(
+    aes(x = scores, y=..count../sum(..count..)),
+    color='black',
+    fill='gray',
+    breaks=seq(0,12,by=0.5)
+  ) +
+  scale_x_continuous(
+    name = 'Score',
+    limits = c(0, 12),
+    breaks = seq(0, 12, by=2)
+  ) +
+  scale_y_continuous(
+    name = 'Proportion of students',
+    labels = scales::percent_format(accuracy=1)
+  )
+
+quiz_rel_freq_polygon
+```
+
+```{r}
+quiz_rel_freq_polygon = ggplot() +
+  geom_freqpoly(
+    aes(x = scores, y=..count../sum(..count..)),
+    color='black',
+    fill='gray',
+    breaks=seq(0,12,by=0.5)
+  ) +
+  scale_x_continuous(
+    name = 'Score',
+    limits = c(0, 12),
+    breaks = seq(0, 12, by=2)
+  ) +
+  scale_y_continuous(
+    name = 'Proportion of students',
+    labels = scales::percent_format(accuracy=1)
+  )
+
+quiz_rel_freq_polygon
+```
+```{r}
+quiz_rel_freq_histogram_3 / quiz_rel_freq_polygon + plot_layout(axis_titles = "collect")
+```
+
+```{r}
+set.seed(1)
+
+# bimodal_data = c(rnorm(2000, mean=-1.3, sd=1), rnorm(2000, mean=1.3, sd=1))
+
+skewed_data = rchisq(1000, df=5)
+bimodal_data = c(skewed_data, -skewed_data)
+
+mystery_histogram_1 = ggplot() +
+  geom_histogram(
+    aes(x = bimodal_data, y=..count../sum(..count..)),
+    color='black',
+    fill='gray',
+    bins=10
+  ) +
+  scale_x_continuous(
+    name = 'Score',
+    limits = c(-30, 30),
+    breaks = seq(-30, 30, by=5)
+  ) +
+  scale_y_continuous(
+    name = 'Proportion',
+    labels = scales::percent_format(accuracy=1)
+  )
+
+mystery_histogram_1
+
+mystery_histogram_2 = ggplot() +
+  geom_histogram(
+    aes(x = bimodal_data, y = ..count../sum(..count..)),
+    color='black',
+    fill='gray',
+    bins=100
+  ) +
+  scale_x_continuous(
+    name = 'Score',
+    limits = c(-30, 30),
+    breaks = seq(-30, 30, by=5)
+  ) +
+  scale_y_continuous(
+    name = 'Proportion',
+    labels = scales::percent_format(accuracy=1)
+  )
+
+mystery_histogram_2
+
+mystery_histogram_1 / mystery_histogram_2
+# mystery_histogram_1 / mystery_histogram_2 + plot_layout(axis_titles = "collect")
+```
+
+
+```{r}
+set.seed(1)
+
+right_skewed_data = 1 + rbeta(1000, shape1=0.4, shape2=1.5) * 100
+
+right_skewed_histogram = ggplot() +
+  geom_histogram(
+    aes(x = right_skewed_data, y=..count../sum(..count..)),
+    color='black',
+    fill='gray',
+    bins=100
+  ) +
+  geom_vline(
+    xintercept = mean(right_skewed_data),
+    color = 'red',
+    linetype = 'dashed',
+    size = 2
+  ) +
+  geom_vline(
+    xintercept = median(right_skewed_data),
+    color = 'blue',
+    linetype = 'dotted',
+    size = 2
+  ) +
+  scale_x_continuous(
+    name = 'Scores'
+  ) +
+  scale_y_continuous(
+    name = 'Proportion',
+    labels = scales::percent_format(accuracy=1)
+  )
+
+right_skewed_histogram
+```
+
+```{r}
+left_skewed_data = 2 - right_skewed_data
+
+left_skewed_histogram = ggplot() +
+  geom_histogram(
+    aes(x = left_skewed_data, y=..count../sum(..count..)),
+    color='black',
+    fill='gray',
+    bins=100
+  ) +
+  geom_vline(
+    xintercept = mean(left_skewed_data),
+    color = 'red',
+    linetype = 'dashed',
+    size = 2
+  ) +
+  geom_vline(
+    xintercept = median(left_skewed_data),
+    color = 'blue',
+    linetype = 'dotted',
+    size = 2
+  ) +
+  scale_x_continuous(
+    name = 'Scores'
+  ) +
+  scale_y_continuous(
+    name = 'Proportion',
+    labels = scales::percent_format(accuracy=1)
+  )
+
+left_skewed_histogram
+```
+
+```{r}
+logged_right_skewed_data = log(right_skewed_data)
+
+log_right_skewed_histogram = ggplot() +
+  geom_histogram(
+    aes(x = logged_right_skewed_data, y=..count../sum(..count..)),
+    color='black',
+    fill='gray',
+    bins=100
+  ) +
+  geom_vline(
+    xintercept = mean(logged_right_skewed_data),
+    color = 'red',
+    linetype = 'dashed',
+    size = 2
+  ) +
+  geom_vline(
+    xintercept = median(logged_right_skewed_data),
+    color = 'blue',
+    linetype = 'dotted',
+    size = 2
+  ) +
+  scale_x_continuous(
+    name = 'log(Scores)'
+  ) +
+  scale_y_continuous(
+    name = 'Proportion',
+    labels = scales::percent_format(accuracy=1)
+  )
+
+log_right_skewed_histogram
+```
+
+```{r}
+sqrt_right_skewed_data = sqrt(right_skewed_data)
+
+sqrt_right_skewed_histogram = ggplot() +
+  geom_histogram(
+    aes(x = sqrt_right_skewed_data, y=..count../sum(..count..)),
+    color='black',
+    fill='gray',
+    bins=100
+  ) +
+  geom_vline(
+    xintercept = mean(sqrt_right_skewed_data),
+    color = 'red',
+    linetype = 'dashed',
+    size = 2
+  ) +
+  geom_vline(
+    xintercept = median(sqrt_right_skewed_data),
+    color = 'blue',
+    linetype = 'dotted',
+    size = 2
+  ) +
+  scale_x_continuous(
+    name = 'sqrt(Scores)'
+  ) +
+  scale_y_continuous(
+    name = 'Proportion',
+    labels = scales::percent_format(accuracy=1)
+  )
+
+sqrt_right_skewed_histogram
+```
+```{r}
+right_skewed_histogram / log_right_skewed_histogram / sqrt_right_skewed_histogram + plot_layout(axis_titles = "collect")
+```
+
