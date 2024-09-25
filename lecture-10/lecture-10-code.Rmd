@@ -1,0 +1,314 @@
+---
+title: "data-generation-lecture-figs"
+output: html_document
+---
+
+```{r}
+source('../josh-helpers.R')
+
+theme_update(
+  axis.text=element_text(size=14),
+  axis.title=element_text(size=14)
+)
+
+library(patchwork)
+```
+
+```{r}
+std_normal_plot = ggplot() + 
+  geom_function(
+    fun = dnorm, 
+    args = list(mean=0, sd=1)
+  ) +
+  geom_vline(
+    xintercept = 0,
+    alpha=0.3
+  ) +
+  geom_hline(
+    yintercept = 0,
+    alpha=0.3
+  ) +
+  scale_y_continuous(
+    name = 'Density',
+    limits=c(0,NA)
+  ) +
+  scale_x_continuous(
+    name=NULL,
+    limits=c(-3.5, 3.5),
+    breaks = seq(-3,3,1),
+  ) +
+  theme(
+    panel.grid.minor.y = element_blank(),
+    panel.grid.major.y = element_blank(),
+  )
+
+std_normal_plot
+```
+
+```{r}
+normal_plot = ggplot() + 
+  geom_function(
+    fun = dnorm, 
+    args = list(mean=0, sd=1)
+  ) +
+  geom_vline(
+    xintercept = 0,
+    alpha=0.3
+  ) +
+  geom_hline(
+    yintercept = 0,
+    alpha=0.3
+  ) +
+  scale_y_continuous(
+    name = 'Density',
+    limits=c(0,NA)
+  ) +
+  scale_x_continuous(
+    name=NULL,
+    limits=c(-3.5, 3.5),
+    breaks = seq(-3,3,1),
+    labels=c('\u03bc-3\u03c3', '\u03bc-2\u03c3', '\u03bc-\u03c3', '\u03bc', '\u03bc+\u03c3', '\u03bc+2\u03c3', '\u03bc+3\u03c3')
+  ) +
+  theme(
+    panel.grid.minor.y = element_blank(),
+    panel.grid.major.y = element_blank(),
+  )
+
+normal_plot
+```
+```{r}
+ggplot() + 
+  geom_function(
+    fun = dnorm, 
+    args = list(mean=0, sd=1)
+  ) +
+  geom_vline(
+    xintercept = 0,
+    alpha=0.3
+  ) +
+  geom_hline(
+    yintercept = 0,
+    alpha=0.3
+  ) +
+  scale_y_continuous(
+    name = 'Density',
+    limits=c(0,NA)
+  ) +
+  scale_x_continuous(
+    name=NULL,
+    limits=c(-3.5, 3.5),
+    breaks = seq(-3,3,1),
+    labels=c('z=-3', 'z=-2', 'z=-1', 'z=0', 'z=1', 'z=2', 'z=3')
+  ) +
+  theme(
+    panel.grid.minor.y = element_blank(),
+    panel.grid.major.y = element_blank(),
+  )
+```
+
+```{r}
+normal_plot +
+  geom_area(
+    stat = "function",
+    fun = dnorm,
+    fill = "red",
+    alpha = 0.2,
+    args = list(mean = 0, sd = 1),
+    xlim=0 + c(-1,1),
+    
+    # This is a magic line of code. Does not matter what you put in
+    # as the x value, but the area won't show unless x has
+    # a value... go figure! 
+    mapping = aes(x = 1),
+  )
+```
+
+```{r}
+normal_plot +
+  geom_area(
+    stat = "function",
+    fun = dnorm,
+    fill = "red",
+    alpha = 0.2,
+    args = list(mean = 0, sd = 1),
+    xlim=0 + c(-2,2),
+    mapping = aes(x = 1),
+  )
+```
+
+```{r}
+normal_plot +
+  geom_area(
+    stat = "function",
+    fun = dnorm,
+    fill = "red",
+    alpha = 0.2,
+    args = list(mean = 0, sd = 1),
+    xlim=0 + c(-3,3),
+    mapping = aes(x = 1),
+  )
+```
+
+```{r}
+normal_plot +
+  geom_area(
+    stat = "function",
+    fun = dnorm,
+    fill = "red",
+    alpha = 0.2,
+    args = list(mean = 0, sd = 1),
+    xlim=0 + c(0,1),
+    mapping = aes(x = 1),
+  )
+```
+
+```{r}
+normal_plot +
+  geom_area(
+    stat = "function",
+    fun = dnorm,
+    fill = "red",
+    alpha = 0.2,
+    args = list(mean = 0, sd = 1),
+    xlim=0 + c(-2,1),
+    mapping = aes(x = 1),
+  )
+```
+
+```{r}
+normal_plot +
+  geom_area(
+    stat = "function",
+    fun = dnorm,
+    fill = "red",
+    alpha = 0.2,
+    args = list(mean = 0, sd = 1),
+    xlim=0 + c(-2,-1),
+    mapping = aes(x = 1),
+  )
+```
+
+```{r}
+std_normal_plot +
+      geom_area(
+        stat = "function",
+        fun = dnorm,
+        fill = "red",
+        alpha = 0.2,
+        args = list(mean = 0, sd = 1),
+        xlim=0 + c(-10,1),
+        mapping = aes(x = 1)
+      ) +
+    geom_text(
+      aes(x = 2, y = 0.25, label = glue('Area:{round(pnorm(1), 2)}'))
+    )
+```
+
+```{r}
+plot_list = map(
+  seq(-2.5, 3, by=0.5),
+  ~ std_normal_plot +
+      geom_area(
+        stat = "function",
+        fun = dnorm,
+        fill = "red",
+        alpha = 0.2,
+        args = list(mean = 0, sd = 1),
+        xlim=0 + c(-10,.x),
+        mapping = aes(x = 1)
+      ) +
+    theme(
+      panel.grid = element_blank(),
+      axis.text = element_blank(),
+      axis.title = element_blank(),
+      axis.ticks.y = element_blank()
+    ) +
+    geom_text(
+      aes(x = 2, y = 0.25, label = round(pnorm(.x), 2))
+    )
+)
+
+wrap_plots(plot_list, ncol=3)
+```
+
+```{r}
+normal_cdf_data = tibble(
+  x = seq(-3, 3, by=0.5),
+  y = pnorm(x)
+)
+
+normal_cdf_data %>% 
+  ggplot(aes(x=x, y=y)) +
+    geom_line() +
+    geom_label(
+      aes(label=round(y, 2))
+    ) +
+    scale_y_continuous(
+      name = 'Cumulative Area',
+      limits=c(0,1),
+      breaks = seq(0,1,0.2)
+    ) +
+    scale_x_continuous(
+      name=NULL,
+      limits=c(-3.5, 3.5),
+      breaks = seq(-3,3,1),
+    )
+```
+```{r}
+ggplot() + 
+  geom_function(
+    fun = pnorm, 
+    args = list(mean=0, sd=1)
+  ) +
+  scale_y_continuous(
+    name = 'Cumulative Area',
+    breaks = seq(0,1,0.2)
+  ) +
+  scale_x_continuous(
+    name=NULL,
+    limits=c(-3.5, 3.5),
+    breaks = seq(-3,3,1),
+  )
+```
+
+```{r}
+ggplot() + 
+  geom_function(
+    fun = pnorm, 
+    args = list(mean=0, sd=1)
+  ) +
+  scale_y_continuous(
+    name = '\u03a6(x) = Area left of x',
+    breaks = seq(0,1,0.2),
+  ) +
+  scale_x_continuous(
+    name='x',
+    limits=c(-3.5, 3.5),
+    breaks = seq(-3,3,1),
+  ) +
+  theme(
+    axis.title.x = element_text(size=20),
+    axis.title.y = element_text(size=20),
+  )
+```
+```{r}
+ggplot() + 
+  geom_function(
+    fun = qnorm, 
+    args = list(mean=0, sd=1)
+  ) +
+  scale_y_continuous(
+    name=quote('x = \u03a6'^{"-1"}~'(Area left of x)'),
+    limits=c(-3.5, 3.5),
+    breaks = seq(-3,3,1),
+  ) +
+  scale_x_continuous(
+    name='Area left of x',
+    breaks = seq(0,1,0.2),
+  ) +
+  theme(
+    axis.title.x = element_text(size=20),
+    axis.title.y = element_text(size=20),
+  )
+```
+
