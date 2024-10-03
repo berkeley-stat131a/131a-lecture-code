@@ -1,0 +1,302 @@
+---
+title: "data-generation-lecture-figs"
+output: html_document
+---
+
+```{r}
+source('../josh-helpers.R')
+
+theme_update(
+  axis.text=element_text(size=14),
+  axis.title=element_text(size=14)
+)
+
+library(patchwork)
+```
+
+```{r}
+n = 10
+
+B = 10000
+
+a = 0.9
+
+b = 1.1
+
+mean_unif = (a + b) / 2
+sd_unif = (b - a) / sqrt(12)
+
+# Sampling distribution of standardized sample mean, using fixed sigma.
+sample_mean_dist_sigma = replicate(
+  B, { v=runif(n,min=a,max=b); (mean(v) - mean_unif) / (sd_unif / sqrt(n)) }
+)
+
+# Sampling distribution of standardized sample mean, using s from each sample.
+sample_mean_dist_s = replicate(
+  B, { v=runif(n,min=a,max=b); (mean(v) - mean_unif) / (sd(v) / sqrt(n)) }
+)
+
+head(sample_mean_dist_sigma)
+head(sample_mean_dist_s)
+```
+
+```{r}
+ggplot() + 
+  geom_function(
+    fun = dnorm, 
+    args = list(mean=0, sd=1),
+    color = 'red'
+  ) +
+  geom_histogram(
+    aes(x = sample_mean_dist_sigma, y=..density..),
+    alpha = 0.3,
+    bins=100
+  ) +
+  geom_hline(
+    yintercept = 0,
+    alpha=0.3
+  ) +
+  scale_y_continuous(
+    name = 'Density',
+    limits=c(0,NA)
+  ) +
+  scale_x_continuous(
+    name=NULL,
+    limits=c(-5, 5),
+    breaks = seq(-5,5,1),
+  ) +
+  theme(
+    panel.grid.minor.y = element_blank(),
+    panel.grid.major.y = element_blank(),
+  )
+```
+
+```{r}
+ggplot() + 
+  geom_function(
+    fun = dnorm, 
+    args = list(mean=0, sd=1),
+    color = 'red'
+  ) +
+  geom_histogram(
+    aes(x = sample_mean_dist_s, y=..density..),
+    alpha = 0.3,
+    bins=100
+  ) +
+  geom_hline(
+    yintercept = 0,
+    alpha=0.3
+  ) +
+  scale_y_continuous(
+    name = 'Density',
+    limits=c(0,NA)
+  ) +
+  scale_x_continuous(
+    name=NULL,
+    limits=c(-5, 5),
+    breaks = seq(-5,5,1),
+  ) +
+  theme(
+    panel.grid.minor.y = element_blank(),
+    panel.grid.major.y = element_blank(),
+  )
+```
+
+```{r}
+n_values = c(2, 3, 5, 10, 20, 30, 50, 100)
+
+# Sampling distribution of standardized sample mean, using fixed sigma.
+sample_mean_dist_sigma = map(
+  n_values,
+  ~ replicate(
+    B, { v=runif(.x,min=a,max=b); (mean(v) - mean_unif) / (sd_unif / sqrt(.x)) }
+  )
+)
+
+# Sampling distribution of standardized sample mean, using fixed sigma.
+sample_mean_dist_s = map(
+  n_values,
+  ~ replicate(
+    B, { v=runif(.x,min=a,max=b); (mean(v) - mean_unif) / (sd(v) / sqrt(.x)) }
+  )
+)
+
+results_df = tibble(
+    n = n_values,
+    sample_mean_dist_sigma = sample_mean_dist_sigma,
+    sample_mean_dist_s=sample_mean_dist_s,
+  ) %>% 
+  unnest(c(sample_mean_dist_sigma, sample_mean_dist_s)) %>% 
+  pivot_longer(
+    cols = c(sample_mean_dist_sigma, sample_mean_dist_s),
+    names_to = "sampling_dist_type",
+    values_to = "sample_means"
+  ) %>% 
+  mutate(
+    sampling_dist_type = str_remove(sampling_dist_type, "_sampling_dist")
+  )
+```
+
+```{r}
+results_df %>% 
+  ggplot() + 
+  geom_boxplot(
+    aes(x = factor(n), y = sample_means, color=sampling_dist_type), 
+    coef=5, outliers=FALSE
+  ) +
+  scale_color_discrete(
+    name = 'Standardized using:',
+    breaks = c('sample_mean_dist_s', 'sample_mean_dist_sigma'),
+    labels = c('s', '\u03C3=0.06')
+  ) +
+  scale_x_discrete(
+    name = 'Number of M&Ms per bag',
+  ) +
+  scale_y_continuous(
+    name = 'Sampling distribution of\nstandardized sample mean'
+  ) +
+  theme(
+    legend.position = 'bottom'
+  )
+```
+
+```{r}
+ggplot() + 
+  geom_function(
+    fun = dnorm, 
+    args = list(mean=0, sd=1),
+    color = 'red'
+  ) +
+  geom_function(
+    fun = dnorm, 
+    args = list(mean=-1, sd=1),
+    color = 'blue'
+  ) +
+  geom_vline(
+    xintercept = 0,
+    color = 'red',
+    linetype='dashed'
+  ) +
+  geom_vline(
+    xintercept = -1,
+    color = 'blue',
+    linetype='dashed'
+  ) +
+  geom_hline(
+    yintercept = 0,
+    alpha=0.3
+  ) +
+  scale_y_continuous(
+    name = 'Density',
+    limits=c(0,NA)
+  ) +
+  scale_x_continuous(
+    name=NULL,
+    limits=c(-4.5, 3.5),
+    breaks = seq(-4,3,1),
+  ) +
+  theme(
+    panel.grid.minor.y = element_blank(),
+    panel.grid.major.y = element_blank(),
+  )
+```
+
+```{r}
+ggplot() + 
+  geom_function(
+    fun = dnorm, 
+    args = list(mean=0, sd=1),
+    color = 'red'
+  ) +
+  geom_function(
+    fun = dnorm, 
+    args = list(mean=0, sd=0.5),
+    color = 'blue'
+  ) +
+  geom_hline(
+    yintercept = 0,
+    alpha=0.3
+  ) +
+  scale_y_continuous(
+    name = 'Density',
+    limits=c(0,NA)
+  ) +
+  scale_x_continuous(
+    name=NULL,
+    limits=c(-3.5, 3.5),
+    breaks = seq(-3,3,1),
+  ) +
+  theme(
+    panel.grid.minor.y = element_blank(),
+    panel.grid.major.y = element_blank(),
+  )
+```
+
+```{r}
+ggplot() + 
+  geom_function(
+    fun = dnorm, 
+    args = list(mean=0, sd=1),
+    color = 'red'
+  ) +
+  geom_function(
+    fun = dt, 
+    args = list(df=1),
+    color = 'blue'
+  ) +
+  geom_hline(
+    yintercept = 0,
+    alpha=0.3
+  ) +
+  scale_y_continuous(
+    name = 'Density',
+    limits=c(0,NA)
+  ) +
+  scale_x_continuous(
+    name=NULL,
+    limits=c(-5, 5),
+    breaks = seq(-5,5,1),
+  ) +
+  theme(
+    panel.grid.minor.y = element_blank(),
+    panel.grid.major.y = element_blank(),
+  )
+```
+
+```{r}
+ggplot() + 
+  geom_function(
+    fun = dnorm, 
+    args = list(mean=0, sd=1),
+    color = 'red'
+  ) +
+  geom_function(
+    fun = dt, 
+    args = list(df=1),
+    color = 'blue'
+  ) +
+  geom_function(
+    fun = dt, 
+    args = list(df=2),
+    color = 'black',
+    linetype = 'dashed'
+  ) +
+  geom_hline(
+    yintercept = 0,
+    alpha=0.3
+  ) +
+  scale_y_continuous(
+    name = 'Density',
+    limits=c(0,NA)
+  ) +
+  scale_x_continuous(
+    name=NULL,
+    limits=c(-5, 5),
+    breaks = seq(-5,5,1),
+  ) +
+  theme(
+    panel.grid.minor.y = element_blank(),
+    panel.grid.major.y = element_blank(),
+  )
+```
+
