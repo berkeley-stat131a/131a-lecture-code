@@ -1,0 +1,97 @@
+---
+title: "data-generation-lecture-figs"
+output: html_document
+---
+
+```{r}
+source('../josh-helpers.R')
+
+theme_update(
+  axis.text=element_text(size=14),
+  axis.title=element_text(size=14)
+)
+
+library(patchwork)
+```
+
+
+```{r}
+ggplot() +
+  geom_function(
+    fun = function(x) 1 - (1-x)^(1/20),
+    color = 'red'
+  ) +
+  geom_function(
+    fun = function(x) x/20,
+    color = 'blue'
+  ) +
+  # geom_text(
+  #   x = 0.1, y = 0.015,
+  #   aes(label = '1 - (1-\u03B1)^(1/20)'),
+  #   color = 'red',
+  #   size = 6
+  # ) +
+  # geom_text(
+  #   x = 0.17, y = 0.003,
+  #   aes(label = '\u03B1/20'),
+  #   color = 'blue',
+  #   size = 6
+  # ) +
+  scale_x_continuous(
+    name = 'Desired FWER = Pr(At least one type I error)',
+    labels = scales::percent_format(1),
+    limits = c(0,0.25),
+    breaks = seq(0,0.25,0.05)
+  ) +
+  scale_y_continuous(
+    name = '\u03B1',
+    labels = scales::percent_format(),
+    limits = c(0,0.02),
+    breaks = seq(0,0.02,0.005)
+  ) +
+  ggtitle('Adjusted \u03B1 for 20 experiments') +
+  theme(axis.title.y = element_text(angle = 0, vjust=0.5))
+```
+
+```{r}
+calculate_power = function(n, null_p, real_p) {
+  # null sampling distribution
+  null_se = sqrt(null_p*(1-null_p)/n)
+  
+  # real sampling distribution
+  real_se = sqrt(real_p*(1-real_p)/n)
+  
+  lower_significance_bound = qnorm(0.025, mean=null_p, sd=null_se)
+  upper_significance_bound = qnorm(0.975, mean=null_p, sd=null_se)
+  
+  lower_tail = pnorm(lower_significance_bound, mean=real_p, sd=real_se)
+  upper_tail = 1 - pnorm(upper_significance_bound, mean=real_p, sd=real_se)
+  
+  power = lower_tail + upper_tail
+  return(power)
+}
+
+
+ggplot() +
+  geom_function(
+    fun = calculate_power,
+    args = list(null_p=0.5, real_p=0.6),
+    color = 'red'
+  ) +
+  geom_hline(
+    yintercept = 0.8,
+    alpha=0.3,
+    linetype='dashed'
+  ) +
+  scale_x_continuous(
+    name = 'Sample size (n)',
+    limits = c(1, 500)
+  ) +
+  scale_y_continuous(
+    name = 'Power (1-\u03B2)',
+    labels = scales::percent_format(1),
+    limits = c(0, 1)
+  ) +
+  ggtitle('Power if p=0.6 and \u03B1=0.05')
+```
+
