@@ -1,0 +1,182 @@
+---
+title: "regression-code"
+output: html_document
+---
+
+```{r}
+source('josh-helpers.R')
+
+theme_update(
+  axis.text=element_text(size=14),
+  axis.title=element_text(size=14)
+)
+```
+
+```{r}
+father_son = read_tsv("father_son.tsv")
+head(father_son)
+```
+```{r}
+father_son_plot = father_son %>% 
+  ggplot(aes(x=Father, y=Son)) +
+  geom_point()
+
+father_son_plot
+```
+```{r}
+sd_x = sd(father_son$Father)
+sd_y = sd(father_son$Son)
+sd_line_slope = sd_y / sd_x
+
+xbar = mean(father_son$Father)
+ybar = mean(father_son$Son)
+
+# SD line has slope sd_y / sd_x
+# SD line passes through (xbar, ybar)
+# Point slope formula:
+# y - y1 = m(x - x1)
+# y - ybar = sd_line_slope(x - xbar)
+# y = sd_line_slope*x + [ ybar - sd_line_slope*xbar ]
+
+father_son_plot_w_sd = father_son_plot +
+  geom_abline(
+    intercept=ybar - sd_line_slope*xbar, 
+    slope=sd_line_slope, 
+    color="blue", 
+    linetype='dashed'
+  )
+
+father_son_plot_w_sd
+```
+```{r}
+cor(father_son$Father, father_son$Son)
+```
+
+```{r}
+x_low_cor = runif(100)
+y_low_cor = x_low_cor + rnorm(100, sd=10)
+
+ggplot() +
+  geom_point(aes(x=x_low_cor, y=y_low_cor))
+```
+```{r}
+cor(x_low_cor, y_low_cor)
+```
+
+```{r}
+x_high_cor = runif(100)
+y_high_cor = x_high_cor + rnorm(100, sd=0.1)
+
+ggplot() +
+  geom_point(aes(x=x_high_cor, y=y_high_cor))
+```
+
+```{r}
+cor(x_high_cor, y_high_cor)
+```
+
+```{r}
+quadratic_x = runif(100, min=-1, max=1)
+quadratic_y = quadratic_x^2 + rnorm(100, sd=0.1)
+
+ggplot() +
+  geom_point(aes(x=quadratic_x, y=quadratic_y))
+```
+```{r}
+# Can still calculate correlation, but
+# meaningless since data is not linear.
+cor(quadratic_x, quadratic_y)
+```
+
+```{r}
+father_son_plot_w_sd_and_lm = father_son_plot_w_sd +
+  geom_smooth(
+    method='lm',
+    se=FALSE,
+    color='red'
+  )
+father_son_plot_w_sd_and_lm
+```
+
+```{r}
+model = lm(Son ~ 1 + Father, data = father_son)
+model
+```
+```{r}
+father_son = father_son %>%
+  mutate(pred = predict(model, .),
+         residual = Son - pred)
+
+head(father_son)
+```
+
+```{r}
+summary(model)
+```
+
+```{r}
+father_son_w_ci = father_son %>% 
+  ggplot(aes(x=Father, y=Son)) +
+  geom_point() +
+  geom_smooth(
+    method='lm', 
+    color='red'
+  )
+
+father_son_w_ci
+```
+
+```{r}
+# mtcars is automatically loaded into R
+head(mtcars)
+```
+
+```{r}
+model_1 = lm(mpg ~ 1 + wt, data = mtcars)
+model_1
+```
+```{r}
+summary(model_1)
+```
+
+```{r}
+# Same as R^2 above
+cor(mtcars$wt, mtcars$mpg)^2
+```
+
+```{r}
+model_2 = lm(mpg ~ 1 + wt + hp, data = mtcars)
+model_2
+```
+```{r}
+summary(model_2)
+```
+
+```{r}
+basic_model_plot = mtcars %>% 
+  ggplot(aes(x=wt, y=mpg)) +
+  geom_point() +
+  geom_smooth(
+    method='lm'
+  )
+basic_model_plot
+```
+
+```{r}
+quadratic_model_plot = mtcars %>% 
+  ggplot(aes(x=wt, y=mpg)) +
+  geom_point() +
+  geom_smooth(
+    method='lm',
+    formula = y ~ 1 + x + I(x^2)
+  )
+quadratic_model_plot
+```
+```{r}
+model_3 = lm(mpg ~ 1 + wt + I(wt^2), data = mtcars)
+model_3
+```
+```{r}
+summary(model_3)
+```
+
