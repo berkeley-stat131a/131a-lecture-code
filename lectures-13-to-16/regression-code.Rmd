@@ -1,0 +1,515 @@
+---
+title: "regression-code"
+output: html_document
+---
+
+```{r}
+source('../josh-helpers.R')
+
+theme_update(
+  axis.text=element_text(size=14),
+  axis.title=element_text(size=14)
+)
+```
+
+```{r}
+father_son = read_tsv("father_son.tsv")
+head(father_son)
+```
+
+```{r}
+father_son_plot = father_son %>% 
+  ggplot(aes(x=Father, y=Son)) +
+  geom_point()
+
+father_son_plot
+```
+
+```{r}
+sd_x = sd(father_son$Father)
+sd_y = sd(father_son$Son)
+sd_line_slope = sd_y / sd_x
+
+xbar = mean(father_son$Father)
+ybar = mean(father_son$Son)
+
+# SD line has slope sd_y / sd_x
+# SD line passes through (xbar, ybar)
+# Point slope formula:
+# y - y1 = m(x - x1)
+# y - ybar = sd_line_slope(x - xbar)
+# y = sd_line_slope*x + [ ybar - sd_line_slope*xbar ]
+
+father_son_plot_w_sd = father_son_plot +
+  geom_abline(
+    intercept=ybar - sd_line_slope*xbar, 
+    slope=sd_line_slope, 
+    color="blue", 
+    linetype='dashed'
+  )
+
+father_son_plot_w_sd
+```
+
+```{r}
+cor(father_son$Father, father_son$Son)
+```
+
+```{r}
+x_low_cor = runif(100)
+y_low_cor = x_low_cor + rnorm(100, sd=10)
+
+ggplot() +
+  geom_point(aes(x=x_low_cor, y=y_low_cor))
+```
+
+```{r}
+cor(x_low_cor, y_low_cor)
+```
+
+```{r}
+x_high_cor = runif(100)
+y_high_cor = x_high_cor + rnorm(100, sd=0.1)
+
+ggplot() +
+  geom_point(aes(x=x_high_cor, y=y_high_cor))
+```
+
+```{r}
+cor(x_high_cor, y_high_cor)
+```
+
+```{r}
+quadratic_x = runif(100, min=-1, max=1)
+quadratic_y = quadratic_x^2 + rnorm(100, sd=0.1)
+
+ggplot() +
+  geom_point(aes(x=quadratic_x, y=quadratic_y))
+```
+
+```{r}
+# Can still calculate correlation, but
+# meaningless since data is not linear.
+cor(quadratic_x, quadratic_y)
+```
+
+```{r}
+father_son_plot_w_sd_and_lm = father_son_plot_w_sd +
+  geom_smooth(
+    method='lm',
+    se=FALSE,
+    color='red'
+  )
+father_son_plot_w_sd_and_lm
+```
+
+```{r}
+model = lm(Son ~ 1 + Father, data = father_son)
+model
+```
+
+```{r}
+father_son = father_son %>%
+  mutate(pred = predict(model, .),
+         residual = Son - pred)
+
+head(father_son)
+```
+
+```{r}
+summary(model)
+```
+
+```{r}
+father_son_w_ci = father_son %>% 
+  ggplot(aes(x=Father, y=Son)) +
+  geom_point() +
+  geom_smooth(
+    method='lm', 
+    color='red'
+  )
+
+father_son_w_ci
+```
+
+```{r}
+# mtcars is automatically loaded into R
+head(mtcars)
+```
+
+```{r}
+model_1 = lm(mpg ~ 1 + wt, data = mtcars)
+model_1
+```
+
+```{r}
+summary(model_1)
+```
+
+```{r}
+# Same as R^2 above
+cor(mtcars$wt, mtcars$mpg)^2
+```
+
+```{r}
+model_2 = lm(mpg ~ 1 + wt + hp, data = mtcars)
+model_2
+```
+
+```{r}
+summary(model_2)
+```
+
+```{r}
+basic_model_plot = mtcars %>% 
+  ggplot(aes(x=wt, y=mpg)) +
+  geom_point() +
+  geom_smooth(
+    method='lm'
+  )
+basic_model_plot
+```
+
+```{r}
+quadratic_model_plot = mtcars %>% 
+  ggplot(aes(x=wt, y=mpg)) +
+  geom_point() +
+  geom_smooth(
+    method='lm',
+    formula = y ~ 1 + x + I(x^2)
+  ) +
+  xlab('weight')
+quadratic_model_plot
+```
+
+```{r}
+model_3 = lm(mpg ~ 1 + wt + I(wt^2), data = mtcars)
+model_3
+```
+
+```{r}
+summary(model_3)
+```
+
+```{r}
+heights_weights = read_csv('https://jdgrossman.com/assets/heights_weights.csv')
+
+# Filter weights less than 110kg to keep plot in smaller area
+heights_weights = filter(heights_weights, weight < 110)
+head(heights_weights)
+```
+
+```{r}
+height_weight_plot = heights_weights %>% 
+  ggplot(aes(x=height, y=weight)) +
+  geom_point() +
+  xlab('Height (cm)') +
+  ylab('Weight (kg)')
+
+height_weight_plot
+```
+
+```{r}
+height_weight_plot +
+  geom_smooth(
+    method='lm',
+    color='red',
+    se=FALSE,
+    formula = y ~ 1
+  )
+```
+
+```{r}
+height_weight_plot +
+  geom_smooth(
+    method='lm',
+    color='red',
+    se=FALSE,
+    formula = y ~ 1 + x
+  )
+```
+
+```{r}
+height_weight_plot_w_sex = heights_weights %>% 
+  ggplot(aes(x=height, y=weight, color=sex)) +
+  geom_point() +
+  xlab('Height (cm)') +
+  ylab('Weight (kg)') +
+  scale_color_discrete(
+    name=NULL,
+    breaks = c('M', 'F'),
+    labels = c('Male', 'Female')
+  ) +
+  theme(
+    # increase legend text size
+    legend.text = element_text(size=12)
+  )
+
+height_weight_plot_w_sex
+```
+
+```{r}
+intercept_only_model <- lm(formula = weight ~ 1 + sex, data=heights_weights)
+
+height_weight_plot_w_sex +
+  geom_smooth(
+    method='lm',
+    se=FALSE,
+    mapping=aes(y=predict(intercept_only_model,heights_weights))
+  )
+```
+
+```{r}
+intercept_only_model <- lm(formula = weight ~ 1 + sex, data=heights_weights)
+
+height_weight_plot_w_sex +
+  geom_smooth(
+    method='lm',
+    se=FALSE,
+    mapping=aes(y=predict(intercept_only_model,heights_weights)),
+    fullrange = TRUE
+  )
+```
+
+```{r}
+ignore_sex_model <- lm(formula = weight ~ 1 + height, data=heights_weights)
+
+height_weight_plot_w_sex +
+  geom_smooth(
+    method='lm',
+    se=FALSE,
+    color = 'black',
+    mapping=aes(y=predict(ignore_sex_model,heights_weights))
+  )
+```
+
+```{r}
+non_interaction_model <- lm(formula = weight ~ 1 + sex + height, data=heights_weights)
+
+height_weight_plot_w_sex +
+  geom_smooth(
+    method='lm',
+    se=FALSE,
+    mapping=aes(y=predict(non_interaction_model,heights_weights))
+  )
+```
+
+```{r}
+height_weight_plot_w_sex +
+  geom_smooth(
+    method='lm',
+    se=FALSE,
+    mapping=aes(y=predict(non_interaction_model,heights_weights)),
+    fullrange=TRUE
+  )
+```
+
+
+```{r}
+height_weight_plot_w_sex +
+  geom_smooth(
+    method='lm',
+    se=FALSE,
+    mapping=aes(y=predict(non_interaction_model,heights_weights)),
+    fullrange=TRUE
+  ) +
+  xlim(0, NA)
+```
+
+```{r}
+height_weight_plot_w_sex +
+  geom_smooth(
+    method='lm',
+    se=FALSE,
+    mapping=aes(y=predict(non_interaction_model,heights_weights))
+  ) + 
+  geom_smooth(
+    method='lm',
+    se=FALSE,
+    color = 'black',
+    size = 0.5,
+    mapping=aes(y=predict(ignore_sex_model,heights_weights))
+  )
+```
+
+```{r}
+interaction_model <- lm(formula = weight ~ 1 + sex * height, data=heights_weights)
+
+height_weight_plot_w_sex +
+  geom_smooth(
+    method='lm',
+    se=FALSE,
+    mapping=aes(y=predict(interaction_model,heights_weights))
+  )
+```
+
+```{r}
+intercept_only_model = lm(weight ~ 1, data=heights_weights)
+summary(intercept_only_model)
+```
+```{r}
+mean(heights_weights$weight)
+```
+
+```{r}
+# Standard error of a sample mean
+sd = sd(heights_weights$weight)
+n = length(heights_weights$weight)
+sd / sqrt(n)
+```
+
+```{r}
+multiple_intercept_model = lm(weight ~ 1 + sex, data=heights_weights)
+summary(multiple_intercept_model)
+```
+
+```{r}
+heights_weights %>% 
+  group_by(sex) %>% 
+  summarize(
+    mean_weight = mean(weight)
+  )
+75.4 - 56.9
+```
+
+```{r}
+# Linear regression assumes that data was generating with same residual SE across values of the input variables.
+# So, the SEs cannot be calculated using the sd/√n formula separately
+# for each group.
+heights_weights %>% 
+  group_by(sex) %>% 
+  summarize(
+    mean_weight = mean(weight), 
+    sd_weight = sd(weight),
+    n = n(),
+    `sd/√n` = sd_weight / sqrt(n)
+  )
+```
+
+```{r}
+df = heights_weights %>% 
+  mutate(
+    sexM = as.numeric(sex=='M')
+  )
+
+df %>% 
+  ggplot(aes(x=sexM, y=weight)) +
+  geom_point(alpha=0.2) +
+  geom_smooth(
+    method='lm',
+    se=FALSE,
+    color='red'
+  ) +
+  ylab('Weight (kg)') +
+  scale_x_continuous(
+    breaks = c(0, 1)
+  )
+```
+
+```{r}
+multiple_intercept_model
+```
+
+```{r}
+single_slope_multiple_intercept_model = lm(weight ~ 1 + sex + height, data=heights_weights)
+summary(single_slope_multiple_intercept_model)
+```
+```{r}
+single_slope_multiple_intercept_model
+```
+
+```{r}
+multiple_slope_multiple_intercept_model = lm(weight ~ 1 + sex * height, data=heights_weights)
+summary(multiple_slope_multiple_intercept_model)
+```
+```{r}
+multiple_slope_multiple_intercept_model
+```
+
+
+```{r}
+female_only_data = filter(heights_weights, sex=='F')
+male_only_data = filter(heights_weights, sex=='M')
+
+lm(weight ~ 1 + height, female_only_data)
+lm(weight ~ 1 + height, male_only_data)
+```
+```{r}
+# Caffeine intake model
+# People who drink more caffeine have higher GPAs
+# Controlling for hours worked, higher caffeine associated with lower GPA
+N = 1000
+
+low_hours_caffeine = pmax(rnorm(N, mean=0.25, sd=0.1), 0)
+low_caffeine_gpa = 3 - 3*low_hours_caffeine + rnorm(N, mean=0, sd=0.7)
+
+mid_hours_caffeine = pmax(rnorm(N, mean=0.5, sd=0.1), 0)
+mid_caffeine_gpa = 5 - 3*mid_hours_caffeine + rnorm(N, mean=0, sd=0.7)
+
+high_hours_caffeine= pmax(rnorm(N, mean=0.75, sd=0.1), 0)
+high_caffeine_gpa = 7 - 3*high_hours_caffeine + rnorm(N, mean=0, sd=0.7)
+
+hours_worked = rep(c('10hr/wk', '20hr/wk', '30hr/wk'), each=N)
+caffeine_intake = c(low_hours_caffeine, mid_hours_caffeine, high_hours_caffeine)
+gpa = c(low_caffeine_gpa, mid_caffeine_gpa, high_caffeine_gpa)
+
+data = tibble(
+  hours_worked = hours_worked,
+  caffeine_intake = caffeine_intake,
+  gpa = gpa
+)
+
+sample_n(data, 10)
+```
+```{r}
+ggplot(data, aes(x=caffeine_intake, y=gpa)) +
+  geom_point() +
+  geom_smooth(method='lm', se=FALSE, color='red') +
+  scale_x_continuous(
+    name = 'Caffeine intake (mg)',
+    limits = c(0,1),
+    breaks = c(0, 0.25, 0.5, 0.75, 1),
+    labels = c('0', '100', '200', '300', '400')
+  ) +
+  scale_y_continuous(
+    name = 'GPA',
+    limits = c(0, 8),
+    breaks = c(0, 2, 4, 6, 8),
+    labels = c('2.0', '2.5', '3.0', '3.5', '4.0')
+  )
+```
+
+
+```{r}
+non_interaction_model = lm(formula = gpa ~ 1 + caffeine_intake + hours_worked, data=data)
+
+ggplot(data, aes(x=caffeine_intake, y=gpa, color=hours_worked)) +
+  geom_point(alpha=0.3) +
+  geom_smooth(aes(y=predict(non_interaction_model, data)), method='lm', se=FALSE) +
+  scale_x_continuous(
+    name = 'Caffeine intake (mg)',
+    limits = c(0,1),
+    breaks = c(0, 0.25, 0.5, 0.75, 1),
+    labels = c('0', '100', '200', '300', '400')
+  ) +
+  scale_y_continuous(
+    name = 'GPA',
+    limits = c(0, 8),
+    breaks = c(0, 2, 4, 6, 8),
+    labels = c('2.0', '2.5', '3.0', '3.5', '4.0')
+  ) +
+  scale_color_discrete(
+    name = 'Hours worked',
+  ) +
+  scale_linetype_manual(
+    guide = FALSE,
+    values = c('solid', 'solid', 'solid'),
+  ) +
+  guides(
+    color = guide_legend(override.aes = list(linetype = 0))
+  ) +
+  theme(
+    legend.position = 'bottom',
+  )
+```
+
