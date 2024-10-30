@@ -1,0 +1,265 @@
+---
+title: "logistic-regression-code"
+output: html_document
+---
+
+```{r}
+source('../josh-helpers.R')
+
+theme_update(
+  axis.text=element_text(size=14),
+  axis.title=element_text(size=14)
+)
+
+logit = function(p) log(p/(1-p))
+logit_inv = function(x) exp(x)/(1 + exp(x))
+```
+
+```{r}
+N = 1000
+fake_x_data = runif(N, min=0, max=1)
+# fake_y_data = pmax(0, 11000*fake_x_data + rexp(N, rate = 1/5000) - 10000)
+# df = tibble(x = fake_x_data, y = fake_y_data)
+fake_prob_data = logit_inv(-5 + 10*fake_x_data)
+fake_underreporting_data = rbinom(N, 1, fake_prob_data) * rexp(N, rate = 1/5000)
+fake_underreported_data = as.numeric(fake_underreporting_data > 0)
+
+df = tibble(
+  x = fake_x_data, 
+  y = fake_underreporting_data,
+  underreported = fake_underreported_data
+)
+```
+
+```{r}
+linear_plot = ggplot(df, aes(x=x, y=y)) +
+  geom_point(alpha=0.1) +
+  scale_x_continuous(
+    name = 'Income',
+    breaks = c(0, 0.4, 0.8),
+    labels = c('$0', '$250,000', '$500,000')
+  ) +
+  scale_y_continuous(
+    name = 'Underreporting amount',
+    labels = scales::dollar_format(1)
+  )
+
+linear_plot
+```
+
+```{r}
+linear_plot + geom_smooth(method='lm', se=FALSE, color='red')
+```
+
+```{r}
+binary_plot = ggplot(df, aes(x=x, y=underreported)) +
+  geom_point(alpha=0.1) +
+  scale_x_continuous(
+    name = 'Income',
+    breaks = c(0, 0.4, 0.8),
+    labels = c('$0', '$250,000', '$500,000')
+  ) +
+  scale_y_continuous(
+    name = 'Underreported?',
+    breaks = c(0,1),
+    # limits = c(-0.1, 1.1),
+  ) +
+  theme(
+    panel.grid.minor.y = element_blank()
+  )
+
+binary_plot
+```
+
+```{r}
+binary_plot + geom_smooth(method='lm', se=FALSE, color='red', fullrange=TRUE, formula = y ~ 1 + x)
+```
+
+```{r}
+binary_plot + 
+  geom_smooth(method='lm', se=FALSE, color='red', fullrange=TRUE, formula = y ~ 1 + x) + 
+  geom_smooth(method = 'glm', method.args = list(family='binomial'), se=FALSE, color='blue', linetype='dashed', fullrange=TRUE)
+```
+
+```{r}
+spam = read_csv('spam.csv') %>% 
+  rename(is_spam = spam)
+
+colnames(spam)
+```
+
+```{r}
+head(spam)
+```
+
+```{r}
+# 4601 emails in dataset
+nrow(spam)
+```
+
+```{r}
+# 39.4% of emails are spam
+mean(spam$is_spam)
+```
+
+```{r}
+# 23% of emails contain the word "make"
+mean(spam$make)
+```
+
+```{r}
+# Fit a linear model using all columns as predictors
+model = lm(is_spam ~ ., data=spam)
+model
+```
+
+```{r}
+ggplot() + 
+  geom_function(
+    fun = exp,
+    xlim = c(-1, 2),
+    color = 'blue'
+  ) +
+  geom_rect(
+    aes(xmin = 0, xmax = 1, ymin = -Inf, ymax = Inf),
+    fill = 'red',
+    alpha = 0.1
+  ) +
+  geom_point(
+    aes(x = 0, y = 1),
+    color = 'black',
+    size = 3
+  ) +
+  geom_point(
+    aes(x = 1, y = exp(1)),
+    color = 'black',
+    size = 3
+  ) +
+  geom_vline(
+    xintercept = 0,
+    color = 'black'
+  ) +
+  geom_hline(
+    yintercept = 0,
+    color = 'black'
+  ) +
+  scale_x_continuous(
+    name = NULL,
+    expand = c(0,0)
+  ) +
+  scale_y_continuous(
+    name = NULL,
+    expand = c(0,0),
+    breaks = c(0, 1, exp(1), 4, 6),
+    labels = c('0', '1', 'e', '4', '6')
+  )
+```
+
+```{r}
+ggplot() + 
+  geom_function(
+    fun = log,
+    xlim = c(0.00000001, 2),
+    color = 'blue'
+  ) +
+  geom_rect(
+    aes(xmin = 0, xmax = 1, ymin = -Inf, ymax = Inf),
+    fill = 'red',
+    alpha = 0.1
+  ) +
+  # geom_point(
+  #   aes(x = 0, y = 1),
+  #   color = 'black',
+  #   size = 3
+  # ) +
+  geom_point(
+    aes(x = 1, y = 0),
+    color = 'black',
+    size = 3
+  ) +
+  geom_vline(
+    xintercept = 0,
+    color = 'black'
+  ) +
+  geom_hline(
+    yintercept = 0,
+    color = 'black'
+  ) +
+  scale_x_continuous(
+    name = NULL,
+    expand = c(0,0),
+    limits = c(-1, 2)
+  ) +
+  scale_y_continuous(
+    name = NULL,
+    expand = c(0,0),
+    limits = c(-6, 3),
+    breaks = c(-3, 0, 3),
+  )
+```
+
+```{r}
+ggplot() + 
+  geom_function(
+    fun = logit,
+    xlim = c(0, 1),
+    color = 'blue'
+  ) +
+  geom_rect(
+    aes(xmin = 0, xmax = 1, ymin = -Inf, ymax = Inf),
+    fill = 'red',
+    alpha = 0.1
+  ) +
+  geom_vline(
+    xintercept = 0,
+    color = 'black'
+  ) +
+  geom_hline(
+    yintercept = 0,
+    color = 'black'
+  ) +
+  scale_x_continuous(
+    name = NULL,
+    expand = c(0,0),
+    limits = c(-1, 2)
+  ) +
+  scale_y_continuous(
+    name = NULL,
+    expand = c(0,0),
+    limits = c(-10, 10),
+    breaks = c(-10, 0, 10),
+  )
+```
+
+```{r}
+ggplot() + 
+  geom_function(
+    fun = inv_logit,
+    xlim = c(-10, 10),
+    color = 'blue'
+  ) +
+  geom_rect(
+    aes(ymin = 0, ymax = 1, xmin = -Inf, xmax = Inf),
+    fill = 'red',
+    alpha = 0.1
+  ) +
+  geom_vline(
+    xintercept = 0,
+    color = 'black'
+  ) +
+  geom_hline(
+    yintercept = 0,
+    color = 'black'
+  ) +
+  scale_x_continuous(
+    name = NULL,
+    expand = c(0,0),
+    limits = c(-10, 10)
+  ) +
+  scale_y_continuous(
+    name = NULL,
+    expand = c(0,0),
+    limits = c(-0.5, 1.5),
+    breaks = c(0, 1),
+  )
+```
