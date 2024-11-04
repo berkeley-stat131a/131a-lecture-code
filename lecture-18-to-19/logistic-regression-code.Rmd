@@ -1,0 +1,552 @@
+---
+title: "logistic-regression-code"
+output: html_document
+---
+
+```{r}
+source('../josh-helpers.R')
+
+theme_update(
+  axis.text=element_text(size=14),
+  axis.title=element_text(size=14)
+)
+
+logit = function(p) log(p/(1-p))
+logit_inv = function(x) exp(x)/(1 + exp(x))
+```
+
+```{r}
+set.seed(1)
+
+N = 1000
+fake_x_data = runif(N, min=0, max=1)
+# fake_y_data = pmax(0, 11000*fake_x_data + rexp(N, rate = 1/5000) - 10000)
+# df = tibble(x = fake_x_data, y = fake_y_data)
+fake_prob_data = logit_inv(-5 + 10*fake_x_data)
+fake_underreporting_data = rbinom(N, 1, fake_prob_data) * rexp(N, rate = 1/5000)
+fake_underreported_data = as.numeric(fake_underreporting_data > 0)
+
+df = tibble(
+  income = 625000 * fake_x_data, 
+  amount = fake_underreporting_data,
+  underreported = fake_underreported_data
+)
+```
+
+```{r}
+linear_plot = ggplot(df, aes(x=income, y=amount)) +
+  geom_point(alpha=0.1) +
+  scale_x_continuous(
+    name = 'Income',
+    breaks = c(0, 250000, 500000),
+    labels = c('$0', '$250,000', '$500,000')
+  ) +
+  scale_y_continuous(
+    name = 'Underreporting amount',
+    labels = scales::dollar_format(1)
+  )
+
+linear_plot
+```
+
+```{r}
+linear_plot + geom_smooth(method='lm', se=FALSE, color='red')
+```
+
+```{r}
+binary_plot = ggplot(df, aes(x=income, y=underreported)) +
+  geom_point(alpha=0.1) +
+  scale_x_continuous(
+    name = 'Income',
+    breaks = c(0, 250000, 500000),
+    labels = c('$0', '$250,000', '$500,000')
+  ) +
+  scale_y_continuous(
+    name = 'Underreported?',
+    breaks = c(0,1),
+    # limits = c(-0.1, 1.1),
+  ) +
+  theme(
+    panel.grid.minor.y = element_blank()
+  )
+
+binary_plot
+```
+
+```{r}
+binary_plot + geom_smooth(method='lm', se=FALSE, color='red', fullrange=TRUE, formula = y ~ 1 + x)
+```
+
+```{r}
+binary_plot + 
+  geom_smooth(method='lm', se=FALSE, color='red', fullrange=TRUE, formula = y ~ 1 + x) + 
+  geom_smooth(method = 'glm', method.args = list(family='binomial'), se=FALSE, color='blue', linetype='dashed', fullrange=TRUE)
+```
+
+```{r}
+spam = read_csv('spam.csv') %>% 
+  rename(is_spam = spam)
+
+colnames(spam)
+```
+
+```{r}
+head(spam)
+```
+
+```{r}
+# 4601 emails in dataset
+nrow(spam)
+```
+
+```{r}
+# 39.4% of emails are spam
+mean(spam$is_spam)
+```
+
+```{r}
+# 23% of emails contain the word "make"
+mean(spam$make)
+```
+
+```{r}
+# Fit a linear model using all columns as predictors
+model = lm(is_spam ~ ., data=spam)
+model
+```
+
+```{r}
+ggplot() + 
+  geom_function(
+    fun = exp,
+    xlim = c(-1, 2),
+    color = 'blue'
+  ) +
+  geom_rect(
+    aes(xmin = 0, xmax = 1, ymin = -Inf, ymax = Inf),
+    fill = 'red',
+    alpha = 0.1
+  ) +
+  geom_point(
+    aes(x = 0, y = 1),
+    color = 'black',
+    size = 3
+  ) +
+  geom_point(
+    aes(x = 1, y = exp(1)),
+    color = 'black',
+    size = 3
+  ) +
+  geom_vline(
+    xintercept = 0,
+    color = 'black'
+  ) +
+  geom_hline(
+    yintercept = 0,
+    color = 'black'
+  ) +
+  scale_x_continuous(
+    name = NULL,
+    expand = c(0,0)
+  ) +
+  scale_y_continuous(
+    name = NULL,
+    expand = c(0,0),
+    breaks = c(0, 1, exp(1), 4, 6),
+    labels = c('0', '1', 'e', '4', '6')
+  )
+```
+
+```{r}
+ggplot() + 
+  geom_function(
+    fun = log,
+    xlim = c(0.00000001, 2),
+    color = 'blue'
+  ) +
+  geom_rect(
+    aes(xmin = 0, xmax = 1, ymin = -Inf, ymax = Inf),
+    fill = 'red',
+    alpha = 0.1
+  ) +
+  # geom_point(
+  #   aes(x = 0, y = 1),
+  #   color = 'black',
+  #   size = 3
+  # ) +
+  geom_point(
+    aes(x = 1, y = 0),
+    color = 'black',
+    size = 3
+  ) +
+  geom_vline(
+    xintercept = 0,
+    color = 'black'
+  ) +
+  geom_hline(
+    yintercept = 0,
+    color = 'black'
+  ) +
+  scale_x_continuous(
+    name = NULL,
+    expand = c(0,0),
+    limits = c(-1, 2)
+  ) +
+  scale_y_continuous(
+    name = NULL,
+    expand = c(0,0),
+    limits = c(-6, 3),
+    breaks = c(-3, 0, 3),
+  )
+```
+
+```{r}
+ggplot() + 
+  geom_function(
+    fun = logit,
+    xlim = c(0, 1),
+    color = 'blue'
+  ) +
+  geom_rect(
+    aes(xmin = 0, xmax = 1, ymin = -Inf, ymax = Inf),
+    fill = 'red',
+    alpha = 0.1
+  ) +
+  geom_vline(
+    xintercept = 0,
+    color = 'black'
+  ) +
+  geom_hline(
+    yintercept = 0,
+    color = 'black'
+  ) +
+  scale_x_continuous(
+    name = NULL,
+    expand = c(0,0),
+    limits = c(-1, 2)
+  ) +
+  scale_y_continuous(
+    name = NULL,
+    expand = c(0,0),
+    limits = c(-10, 10),
+    breaks = c(-10, 0, 10),
+  )
+```
+
+```{r}
+ggplot() + 
+  geom_function(
+    fun = inv_logit,
+    xlim = c(-10, 10),
+    color = 'blue'
+  ) +
+  geom_rect(
+    aes(ymin = 0, ymax = 1, xmin = -Inf, xmax = Inf),
+    fill = 'red',
+    alpha = 0.1
+  ) +
+  geom_vline(
+    xintercept = 0,
+    color = 'black'
+  ) +
+  geom_hline(
+    yintercept = 0,
+    color = 'black'
+  ) +
+  scale_x_continuous(
+    name = NULL,
+    expand = c(0,0),
+    limits = c(-10, 10)
+  ) +
+  scale_y_continuous(
+    name = NULL,
+    expand = c(0,0),
+    limits = c(-0.5, 1.5),
+    breaks = c(0, 1),
+  )
+```
+
+```{r}
+modified_df = mutate(df, income = income / 1000)
+
+binary_plot = ggplot(modified_df, aes(x=income, y=underreported)) +
+  geom_point(alpha=0.1) +
+  scale_x_continuous(
+    name = 'Income, in thousands',
+    breaks = c(0, 250, 500),
+    labels = c('0', '250', '500')
+  ) +
+  scale_y_continuous(
+    name = 'Underreported?',
+    breaks = c(0, 0.5, 1),
+    # limits = c(-0.1, 1.1),
+  ) +
+  theme(
+    # panel.grid.minor.y = element_blank()
+  )
+
+binary_plot
+```
+
+```{r}
+lpm = lm(underreported ~ 1 + income, data=modified_df)
+coef(lpm)
+```
+
+```{r}
+lpm_pred_250k = predict(lpm, newdata=tibble(income=250))
+
+binary_plot + geom_smooth(method='lm', se=FALSE, color='red', fullrange=TRUE, formula = y ~ 1 + x) + geom_point(x=250, y=lpm_pred_250k, size=5, color='red')
+```
+
+```{r}
+predict(lpm, newdata=tibble(income=250))
+```
+
+```{r}
+log_reg_plot = binary_plot + 
+  geom_smooth(method = 'glm', method.args = list(family='binomial'), se=FALSE, color='blue', fullrange=TRUE)
+
+log_reg_plot
+```
+
+
+```{r}
+log_reg = glm(underreported ~ 1 + income, data=modified_df, family='binomial')
+coef(log_reg)
+```
+
+```{r}
+prob_pred_250k = predict(log_reg, newdata=tibble(income=250), type='response')
+
+log_reg_plot +
+  geom_point(aes(x=250, y=prob_pred_250k), size=4, color='red')
+```
+
+```{r}
+pred_250k_log_odds = predict(log_reg, newdata=tibble(income=250))
+pred_250k_log_odds
+```
+
+```{r}
+b0 = coef(log_reg)[[1]]
+b_income = coef(log_reg)[[2]]
+
+# Estimated log odds of underreporting at 250k income
+b0 + 250 * b_income
+```
+
+```{r}
+# Odds of underreporting at 250k income
+exp(pred_250k_log_odds)
+```
+
+```{r}
+# Probability of underreporting at 250k income
+exp(pred_250k_log_odds) / (1 + exp(pred_250k_log_odds))
+```
+
+```{r}
+predict(log_reg, newdata=tibble(income=250), type='response')
+```
+
+```{r}
+preds = predict(log_reg, newdata=modified_df)
+head(preds)
+```
+
+```{r}
+pred_250k = predict(log_reg, newdata=tibble(income=250))
+
+ggplot() +
+  geom_point(aes(x=modified_df$income, y=preds), alpha=0.1) +
+  geom_point(aes(x=250, y=pred_250k), size=5, color='red') +
+  scale_x_continuous(
+    name = 'Income, in thousands',
+    breaks = c(0, 250, 500),
+    labels = c('0', '250', '500')
+  ) +
+  scale_y_continuous(
+    name = 'Predicted outcome'
+  )
+```
+
+```{r}
+log_odds_plot = ggplot() +
+  geom_point(aes(x=modified_df$income, y=preds), alpha=0.1) +
+  geom_point(aes(x=250, y=pred_250k), size=5, color='red') +
+  scale_x_continuous(
+    name = 'Income, in thousands',
+    breaks = c(0, 250, 500),
+    labels = c('0', '250', '500')
+  ) +
+  scale_y_continuous(
+    name = 'Log odds of underreporting'
+  )
+
+log_odds_plot
+```
+```{r}
+pred_0k = predict(log_reg, newdata=tibble(income=0))
+pred_500k = predict(log_reg, newdata=tibble(income=500))
+
+log_odds_plot = ggplot() +
+  geom_point(aes(x=modified_df$income, y=preds), alpha=0.1) +
+  geom_point(aes(x=250, y=pred_250k), size=5, color='red') +
+  geom_point(aes(x=0, y=pred_0k), size=5, color='red', shape=17) +
+  geom_point(aes(x=500, y=pred_500k), size=5, color='red', shape=17) +
+  scale_x_continuous(
+    name = 'Income, in thousands',
+    breaks = c(0, 250, 500),
+    labels = c('0', '250', '500')
+  ) +
+  scale_y_continuous(
+    name = 'Log odds of underreporting'
+  )
+
+log_odds_plot
+```
+```{r}
+odds_plot = ggplot() +
+  geom_point(aes(x=modified_df$income, y=exp(preds)), alpha=0.1) +
+  geom_point(aes(x=250, y=exp(pred_250k)), size=5, color='red') +
+  geom_point(aes(x=0, y=exp(pred_0k)), size=5, color='red', shape=17) +
+  geom_point(aes(x=500, y=exp(pred_500k)), size=5, color='red', shape=17) +
+  scale_x_continuous(
+    name = 'Income, in thousands',
+    breaks = c(0, 250, 500),
+    labels = c('0', '250', '500')
+  ) +
+  scale_y_continuous(
+    name = 'Odds of underreporting'
+  )
+
+odds_plot
+```
+
+```{r}
+prob_plot = ggplot() +
+  geom_point(aes(x=modified_df$income, y=inv_logit(preds)), alpha=0.1) +
+  geom_point(aes(x=250, y=inv_logit(pred_250k)), size=5, color='red') +
+  geom_point(aes(x=0, y=inv_logit(pred_0k)), size=5, color='red', shape=17) +
+  geom_point(aes(x=500, y=inv_logit(pred_500k)), size=5, color='red', shape=17) +
+  scale_x_continuous(
+    name = 'Income, in thousands',
+    breaks = c(0, 250, 500),
+    labels = c('0', '250', '500')
+  ) +
+  scale_y_continuous(
+    name = 'Probability of underreporting'
+  )
+
+prob_plot
+```
+
+```{r}
+prob_pred_250k = predict(log_reg, newdata=tibble(income=250), type='response')
+
+log_reg_plot +
+  geom_point(aes(x=250, y=inv_logit(pred_250k)), size=5, color='red') +
+  geom_point(aes(x=0, y=inv_logit(pred_0k)), size=5, color='red', shape=17) +
+  geom_point(aes(x=500, y=inv_logit(pred_500k)), size=5, color='red', shape=17)
+```
+```{r}
+income_at_pred_0.5 = (logit(0.5) - b0) / b_income
+
+# Equation of line at maximum change in probability per unit increase in x.
+# y - 0.5 = b_income/4 * (x - income_at_pred_0.5)
+# y = (0.5 -  b_income/4* income_at_pred_0.5) + b_income/4 * x
+
+log_reg_plot +
+  geom_hline(yintercept = 0.5, alpha=0.3) +
+  geom_abline(intercept = (0.5 -  b_income/4* income_at_pred_0.5), slope = b_income/4, linetype='dashed') +
+  geom_point(x=income_at_pred_0.5, y=0.5, size=4, color='red')
+```
+
+```{r}
+binary_plot + 
+  geom_smooth(method='lm', se=FALSE, color='red', fullrange=TRUE, formula = y ~ 1 + x) + 
+  geom_smooth(method = 'glm', method.args = list(family='binomial'), se=FALSE, color='blue', fullrange=TRUE)
+```
+
+```{r}
+coef(lpm)
+```
+
+```{r}
+# Interpret on log odds scale.
+# Linear with respect to covariates.
+# Also divide by 4 trick.
+coef(log_reg)
+```
+
+```{r}
+# Somewhat close to the LPM coefficient on income.
+# Remember, this is an upper bound on the pp change in probability
+# with the logistic regression model, while the LPM
+# coefficient is the estimated average pp change.
+0.0161 / 4
+```
+
+```{r}
+# Interpret on odds scale
+exp(coef(log_reg))
+```
+
+```{r}
+# LPM is slightly more accurate than logistic regression for fake underreporting
+# data! If we use the common default threshold of 0.5
+# lpm_preds = predict(lpm)
+# binarized_lpm_preds = (lpm_preds > 0.5)
+# mean(binarized_lpm_preds == modified_df$underreported)
+# 
+# log_reg_preds = predict(log_reg, type='response')
+# binarized_log_reg_preds = (log_reg_preds > 0.5)
+# mean(binarized_log_reg_preds == modified_df$underreported)
+```
+
+```{r}
+spam_lpm = lm(is_spam ~ ., data=spam)
+coef(spam_lpm)
+```
+
+```{r}
+spam_log_reg = glm(is_spam ~ ., data=spam, family='binomial')
+coef(spam_log_reg)
+```
+
+```{r}
+spam_log_reg = glm(is_spam ~ ., data=spam, family='binomial')
+exp(coef(spam_log_reg))
+```
+
+```{r}
+spam_log_reg = glm(is_spam ~ ., data=spam, family='binomial')
+coef(spam_log_reg) / 4
+```
+
+```{r}
+# On the spam dataset, logistic regression has higher accuracy than LPM
+# at the default threshold.
+
+spam_lpm_preds = predict(spam_lpm)
+binarized_spam_lpm_preds = (spam_lpm_preds > 0.5)
+
+spam_log_reg_preds = predict(spam_log_reg, type='response')
+binarized_spam_log_reg_preds = (spam_log_reg_preds > 0.5)
+
+mean(binarized_spam_lpm_preds == spam$is_spam)
+mean(binarized_spam_log_reg_preds == spam$is_spam)
+```
+
+```{r}
+# Interpret on log odds scale.
+# Linear with respect to covariates.
+# Also divide by 4 trick.
+coef(spam_log_reg)
+```
+```{r}
+# Interpret on odds scale
+exp(coef(spam_log_reg))
+```
+
