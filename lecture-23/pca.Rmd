@@ -1,0 +1,438 @@
+---
+title: "regression-code"
+output: html_document
+---
+
+```{r}
+source('../josh-helpers.R')
+
+library(MASS)
+
+theme_update(
+  axis.text=element_text(size=14),
+  axis.title=element_text(size=14)
+)
+```
+
+```{r}
+# Simulate draws from multivariate normal distribution
+
+set.seed(131)
+
+N = 100
+MEAN_RATING = 2.5
+VARIANCE_OF_RATINGS = 1
+COVARIANCE_OF_RATINGS = 0.75
+COV_MATRIX = matrix(c(VARIANCE_OF_RATINGS,COVARIANCE_OF_RATINGS,COVARIANCE_OF_RATINGS,VARIANCE_OF_RATINGS), nrow=2, ncol=2)
+
+ratings = mvrnorm(n=N, mu=c(MEAN_RATING,MEAN_RATING), Sigma=COV_MATRIX) %>% 
+  # ceiling at 5
+  pmin(5) %>% 
+  # floor at 0
+  pmax(0)
+
+ratings_df = tibble(rating_1=ratings[,1], rating_2=ratings[,2])
+
+head(ratings_df)
+```
+
+```{r}
+base_pca_plot = ggplot(ratings_df) +
+  geom_point(
+    aes(x=rating_1, y=rating_2),
+    size = 0.5
+  ) +
+  scale_x_continuous(
+    name = 'Rating 1',
+    limits=c(0,5)
+  ) +
+  scale_y_continuous(
+    name = 'Rating 2',
+    limits=c(0,5)
+  ) +
+  theme(
+    aspect.ratio = 1,
+    panel.grid = element_blank(),
+    # rotate y axis title
+    axis.title.y = element_text(angle=0, vjust=0.5)
+  )
+
+base_pca_plot
+```
+```{r}
+plot_w_point_of_averages = base_pca_plot +
+  geom_point(
+    x = mean(ratings_df$rating_1),
+    y = mean(ratings_df$rating_2),
+    size = 5,
+    color='red',
+    shape = 4
+  )
+
+plot_w_point_of_averages
+```
+```{r}
+plot_w_horizontal_line = plot_w_point_of_averages +
+  geom_hline(
+    yintercept = mean(ratings_df$rating_2)
+  )
+
+plot_w_horizontal_line
+```
+```{r}
+plot_w_horizontal_proj = plot_w_horizontal_line +
+  geom_segment(
+    aes(x = rating_1, y = rating_2, xend = rating_1, yend = mean(rating_2)),
+    alpha = 0.2,
+    color = 'blue'
+  ) +
+  geom_point(
+    aes(x = rating_1, y = mean(rating_2)),
+    # alpha = 0.2,
+    color = 'blue',
+    size = 0.5
+  )
+
+plot_w_horizontal_proj
+```
+```{r}
+plot_w_horizontal_points = plot_w_horizontal_proj
+
+plot_w_horizontal_points$layers[c(1,4)] <- NULL
+
+plot_w_horizontal_points
+```
+```{r}
+# Variance in rating 1 direction
+var(ratings_df$rating_1)
+```
+
+
+```{r}
+plot_w_vertical_line = plot_w_point_of_averages +
+  geom_vline(
+    xintercept = mean(ratings_df$rating_1)
+  )
+
+plot_w_vertical_line
+```
+```{r}
+plot_w_vertical_proj = plot_w_vertical_line +
+  geom_segment(
+    aes(x = rating_1, y = rating_2, xend = mean(rating_1), yend = rating_2),
+    alpha = 0.2,
+    color = 'blue'
+  ) +
+  geom_point(
+    aes(x = mean(rating_1), y = rating_2),
+    # alpha = 0.2,
+    color = 'blue',
+    size = 0.5
+  )
+
+plot_w_vertical_proj
+```
+```{r}
+plot_w_vertical_points = plot_w_vertical_proj
+
+plot_w_vertical_points$layers[c(1,4)] <- NULL
+
+plot_w_vertical_points
+```
+
+
+```{r}
+# Variance in rating 2 direction
+var(ratings_df$rating_2)
+```
+
+```{r}
+
+slopes = c(1/4, 1/3, 1/2, 0, 1, 2, 3, 4)
+intercepts = mean(ratings_df$rating_2) - slopes * mean(ratings_df$rating_1)
+df = tibble(slope = slopes, intercept = intercepts)
+
+base_pca_plot +
+  geom_abline(data=df, aes(slope=slope, intercept=intercept)) 
+```
+
+```{r}
+pca_obj = prcomp(ratings_df)
+str(pca_obj)
+```
+```{r}
+pca_coords = pca_obj$x
+pca_x1_coords = pca_coords[,1]
+pca_x2_coords = pca_coords[,2]
+
+# Extract the PCA vectors (principal component)
+pc1 = pca_obj$rotation[,1]  # First principal component (vector)
+pc2 = pca_obj$rotation[,2]  # Second principal component (vector)
+
+x1 = ratings_df$rating_1
+x2 = ratings_df$rating_2
+
+# PCA1 line intercept and slope
+B = pc1[[2]] / pc1[[1]]
+A = mean(x2) - B * mean(x1)
+
+plot_w_pca1_line = plot_w_point_of_averages +
+  geom_abline(
+    intercept = A, slope = B, alpha=0.5
+  )
+
+plot_w_pca1_line
+```
+
+```{r}
+ # Finds endpoint for a perpendicular segment from the point (x1_start,x2_start) to the line y=a+b*x
+perp_segment_coord = function(x1_start, x2_start, a, b){
+  x1_end = (x1_start+b*x2_start-a*b)/(1+b^2)
+  x2_end = a + b*x1_end
+  c(x1_end=x1_end, x2_end=x2_end)
+}
+
+end_coords = map2_dfr(x1, x2, perp_segment_coord, A, B)
+
+perp_line_coords = end_coords %>% 
+  mutate(
+    x1_start = x1,
+    x2_start = x2
+  )
+
+plot_w_pca1_proj = plot_w_pca1_line +
+  geom_segment(
+    data = perp_line_coords,
+    aes(x=x1_start, y=x2_start, xend = x1_end, yend = x2_end),
+    alpha=0.2,
+    color='blue'
+  ) +
+  geom_point(
+    data = perp_line_coords,
+    aes(x=x1_end, y=x2_end),
+    color = 'blue',
+    size = 0.5
+  )
+
+plot_w_pca1_proj
+```
+
+```{r}
+plot_w_pca1_points = plot_w_pca1_proj
+
+plot_w_pca1_points$layers[c(1,4)] <- NULL
+
+plot_w_pca1_points
+```
+```{r}
+# Variance in PCA1 direction
+var(pca_x1_coords)
+```
+
+```{r}
+# PCA2 line intercept and slope
+B = pc2[[2]] / pc2[[1]]
+A = mean(x2) - B * mean(x1)
+
+plot_w_pca2_line = plot_w_pca1_line + 
+  geom_abline(
+    intercept = A, 
+    slope = B, 
+    # alpha=0.5
+  )
+
+plot_w_pca2_line
+```
+
+```{r}
+new_end_coords = map2_dfr(x1, x2, perp_segment_coord, A, B)
+
+new_perp_line_coords = new_end_coords %>% 
+  mutate(
+    x1_start = x1,
+    x2_start = x2
+  )
+
+plot_w_pca2_proj = plot_w_pca2_line +
+  geom_segment(
+    data = new_perp_line_coords,
+    aes(x=x1_start, y=x2_start, xend = x1_end, yend = x2_end),
+    alpha=0.2,
+    color='blue'
+  ) +
+  geom_point(
+    data = new_perp_line_coords,
+    aes(x=x1_end, y=x2_end),
+    color = 'blue',
+    size = 0.5
+  )
+
+plot_w_pca2_proj
+```
+
+```{r}
+plot_w_pca2_points = plot_w_pca2_proj
+
+plot_w_pca2_points$layers[c(1,5)] <- NULL
+
+plot_w_pca2_points
+```
+```{r}
+# Variance in PCA2 direction
+var(pca_x2_coords)
+```
+
+```{r}
+plot_w_all_pca_points = plot_w_pca2_points +
+  geom_point(
+    aes(x=rating_1, y=rating_2),
+    size = 0.5,
+    alpha = 0.3
+  ) +
+  geom_point(
+    data = perp_line_coords,
+    aes(x=x1_end, y=x2_end),
+    color = 'blue',
+    size = 0.5
+  )
+
+plot_w_all_pca_points
+```
+
+```{r}
+# Total variance in the PCA directions is the same as the sum
+# of the variance of the columns of the data
+# Think of total variance as the total information in the data
+tot_pca_var = var(pca_x1_coords) + var(pca_x2_coords)
+tot_var = var(ratings_df$rating_1) + var(ratings_df$rating_2)
+
+tot_pca_var
+tot_var
+```
+
+```{r}
+# Proportion of variance explained by each column of the data.
+# No single column dominates.
+var(ratings_df$rating_1) / tot_var
+var(ratings_df$rating_2) / tot_var
+```
+
+```{r}
+# The proportion of variance explained by each PCA direction
+prop_pca_var = c(var(pca_x1_coords), var(pca_x2_coords)) / tot_pca_var
+
+# PCA1 explains 88% of the variance in the data
+# PCA2 explains 12% 
+prop_pca_var
+```
+
+```{r}
+# Take things up to higher dimensions with the NeurIPS paper dataset,
+# which includes word frequencies for papers published between
+# 1987 and 2015.
+# Can we use PCA to cluster papers by topic using only two dimensions?
+
+# data = read_csv('~/Downloads/NIPS_1987-2015.csv')
+# raw_data2015 = select(data, word=`...1`, matches('2015'))
+# 
+# # Remove rows with zero word counts
+# raw_data2015 = raw_data2015[rowSums(raw_data2015[-1]) > 0,]
+# 
+# # Remove first column of words
+# words = raw_data2015$word
+# data2015 = select(raw_data2015, -word)
+# 
+# # Transpose data so that rows are papers and columns are words
+# transposed_data2015 = as.data.frame(t(data2015))
+# colnames(transposed_data2015) = words
+# head(transposed_data2015)
+# 
+# write_csv(transposed_data2015, '~/Downloads/data_2015.csv')
+
+data2015 = read_csv('data_2015.csv')
+```
+
+```{r}
+data2015
+```
+```{r}
+# 403 papers in 2015
+nrow(data2015)
+```
+
+```{r}
+# Which words used more than 100 times?
+data2015 %>% map_dbl(max) %>% sort(decreasing=TRUE) %>% discard(~ .x < 100)
+```
+
+```{r}
+# Perform PCA on the data
+pca_data2015 = prcomp(data2015)
+```
+
+```{r}
+pc1 = pca_data2015$x[,1]
+pc2 = pca_data2015$x[,2]
+```
+
+```{r}
+# Variance explained
+var_explained = pca_data2015$sdev^2 / sum(pca_data2015$sdev^2)
+
+# PC1: 5% of the variance
+# PC2: 3% of the variance
+# With 403 papers (max number of components since p < n), this is not bad.
+var_explained[c(1,2)]
+```
+
+```{r}
+# Plot the first two PCA directions
+plot_pca_data2015 = ggplot() +
+  geom_point(
+    aes(x=pc1, y=pc2),
+    data = data.frame(pc1, pc2),
+    size = 0.5
+  )
+
+plot_pca_data2015
+```
+```{r}
+set.seed(0)
+
+kmeans_obj = kmeans(tibble(pc1=pc1, pc2=pc2), centers=2)
+
+centroids = kmeans_obj$centers
+```
+
+```{r}
+# Add the cluster centroids and color the points
+plot_pca_data2015_w_clusters = plot_pca_data2015 +
+  geom_point(
+    aes(x=pc1, y=pc2, color=factor(kmeans_obj$cluster)),
+    size = 0.5,
+  ) +
+  geom_point(
+    aes(x=centroids[,1], y=centroids[,2]),
+    size=3,
+    color = 'black'
+  ) +
+  scale_color_discrete(
+    guide=FALSE
+  )
+ 
+plot_pca_data2015_w_clusters
+```
+
+```{r}
+# Distribution of words in each cluster
+data_w_clusters = mutate(data2015, cluster=kmeans_obj$cluster)
+
+# Pass these two word lists into ChatGPT, and ask it to describe them in terms of machine learning! 
+
+# Looks like cluster 1 may be more about mathematical foundations
+data_w_clusters %>% filter(cluster==1) %>% map_dbl(max) %>% sort(decreasing=TRUE) %>% discard(~ .x < 100)
+
+# Cluster 2 looks more like applications
+data_w_clusters %>% filter(cluster==2) %>% map_dbl(max) %>% sort(decreasing=TRUE) %>% discard(~ .x < 100)
+```
+
