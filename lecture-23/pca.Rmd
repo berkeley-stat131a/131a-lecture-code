@@ -304,9 +304,9 @@ plot_w_all_pca_points
 # of the variance of the columns of the data
 # Think of total variance as the total information in the data
 tot_pca_var = var(pca_x1_coords) + var(pca_x2_coords)
-tot_var = var(ratings_df$rating_1) + var(ratings_df$rating_2)
-
 tot_pca_var
+
+tot_var = var(ratings_df$rating_1) + var(ratings_df$rating_2)
 tot_var
 ```
 
@@ -318,12 +318,11 @@ var(ratings_df$rating_2) / tot_var
 ```
 
 ```{r}
-# The proportion of variance explained by each PCA direction
-prop_pca_var = c(var(pca_x1_coords), var(pca_x2_coords)) / tot_pca_var
+# PC1 explains 88% of the variance in the data
+var(pca_x1_coords) / tot_pca_var
 
-# PCA1 explains 88% of the variance in the data
-# PCA2 explains 12% 
-prop_pca_var
+# PC2 explains 12% 
+var(pca_x2_coords) / tot_pca_var
 ```
 
 ```{r}
@@ -349,7 +348,7 @@ prop_pca_var
 # 
 # write_csv(transposed_data2015, '~/Downloads/data_2015.csv')
 
-data2015 = read_csv('data_2015.csv')
+data2015 = read_csv('~/Downloads/data_2015.csv')
 ```
 
 ```{r}
@@ -361,8 +360,8 @@ nrow(data2015)
 ```
 
 ```{r}
-# Which words used more than 100 times?
-data2015 %>% map_dbl(max) %>% sort(decreasing=TRUE) %>% discard(~ .x < 100)
+# Which 15 words used most often?
+data2015 %>% map_dbl(sum) %>% sort(decreasing=TRUE) %>% head(n=15)
 ```
 
 ```{r}
@@ -424,15 +423,15 @@ plot_pca_data2015_w_clusters
 ```
 
 ```{r}
-# Distribution of words in each cluster
+# Most common words in each cluster
 data_w_clusters = mutate(data2015, cluster=kmeans_obj$cluster)
 
 # Pass these two word lists into ChatGPT, and ask it to describe them in terms of machine learning! 
 
 # Looks like cluster 1 may be more about mathematical foundations
-data_w_clusters %>% filter(cluster==1) %>% map_dbl(max) %>% sort(decreasing=TRUE) %>% discard(~ .x < 100)
+data_w_clusters %>% filter(cluster==1) %>% map_dbl(sum) %>% sort(decreasing=TRUE) %>% head(n=15)
 
 # Cluster 2 looks more like applications
-data_w_clusters %>% filter(cluster==2) %>% map_dbl(max) %>% sort(decreasing=TRUE) %>% discard(~ .x < 100)
+data_w_clusters %>% filter(cluster==2) %>% map_dbl(sum) %>% sort(decreasing=TRUE) %>% head(n=15)
 ```
 
